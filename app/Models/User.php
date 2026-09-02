@@ -14,6 +14,11 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
 
+    public function devices()
+    {
+        return $this->hasMany(Device::class);
+    }
+
     /**
      * The attributes that are mass assignable.
      *
