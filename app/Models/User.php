@@ -7,11 +7,12 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -19,9 +20,14 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'public_id',
+        'name_display',
         'email',
-        'password',
+        'recovery_secret',
+        'recovery_secret_hidden_at',
+        'recovery_secret_updated_at',
+        'is_discoverable',
+        'show_public_id_on_profile',
     ];
 
     /**
@@ -30,8 +36,7 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $hidden = [
-        'password',
-        'remember_token',
+        'recovery_secret',
     ];
 
     /**
@@ -43,7 +48,11 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'recovery_secret' => 'encrypted',
+            'recovery_secret_hidden_at' => 'datetime',
+            'recovery_secret_updated_at' => 'datetime',
+            'is_discoverable' => 'boolean',
+            'show_public_id_on_profile' => 'boolean',
         ];
     }
 }
