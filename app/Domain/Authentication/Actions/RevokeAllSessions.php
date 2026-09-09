@@ -18,6 +18,8 @@ class RevokeAllSessions
                 ->whereNull('revoked_at')
                 ->update(['revoked_at' => now(), 'revoked_reason' => 'logout_all']);
 
+            $user->devices()->whereNull('revoked_at')->update(['revoked_at' => now()]);
+
             SecurityEvent::create([
                 'id' => (string) Str::uuid(),
                 'user_id' => $user->getKey(),

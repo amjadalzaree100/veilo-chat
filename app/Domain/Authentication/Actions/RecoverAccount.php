@@ -21,23 +21,23 @@ class RecoverAccount
      */
     public function handle(array $data, ?string $ipAddress, ?string $userAgent): array
     {
-        return DB::transaction(function () use ($data, $ipAddress, $userAgent): array {
-            $user = User::query()->where('public_id', $data['public_id'])->first();
+        $user = User::query()->where('public_id', $data['public_id'])->first();
 
-            if (! $user || ! hash_equals((string) $user->recovery_secret_encrypted, $data['recovery_secret'])) {
-                if ($user) {
-                    SecurityEvent::create([
-                        'id' => (string) Str::uuid(),
-                        'user_id' => $user->getKey(),
-                        'event_type' => 'recovery_failed',
-                        'ip_address' => $ipAddress,
-                        'user_agent' => $userAgent,
-                    ]);
-                }
-
-                throw new RuntimeException('Recovery failed.');
+        if (! $user || ! hash_equals((string) $user->recovery_secret_encrypted, $data['recovery_secret'])) {
+            if ($user) {
+                SecurityEvent::create([
+                    'id' => (string) Str::uuid(),
+                    'user_id' => $user->getKey(),
+                    'event_type' => 'recovery_failed',
+                    'ip_address' => $ipAddress,
+                    'user_agent' => $userAgent,
+                ]);
             }
 
+            throw new RuntimeException('Recovery failed.');
+        }
+
+        return DB::transaction(function () use ($data, $ipAddress, $userAgent, $user): array {
             $device = Device::create([
                 'id' => (string) Str::uuid(),
                 'user_id' => $user->getKey(),

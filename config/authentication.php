@@ -3,4 +3,5 @@
 return [
     'access_token_ttl_minutes' => (int) env('ACCESS_TOKEN_TTL', 15),
     'refresh_token_ttl_days' => (int) env('REFRESH_TOKEN_TTL_DAYS', 30),
+    'jwt_signing_key' => env('JWT_SIGNING_KEY'),
 ];

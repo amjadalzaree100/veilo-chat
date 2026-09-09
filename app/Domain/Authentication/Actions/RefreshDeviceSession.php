@@ -21,7 +21,7 @@ class RefreshDeviceSession
      */
     public function handle(string $plainRefreshToken, string $ipAddress, ?string $userAgent): array
     {
-        return DB::transaction(function () use ($plainRefreshToken, $ipAddress, $userAgent): array {
+        $result = DB::transaction(function () use ($plainRefreshToken, $ipAddress, $userAgent): ?array {
             $token = RefreshToken::query()
                 ->where('token_hash', hash('sha256', $plainRefreshToken))
                 ->lockForUpdate()
@@ -34,7 +34,7 @@ class RefreshDeviceSession
             $user = User::query()->find($token->user_id);
             $device = Device::query()->whereKey($token->device_id)->where('user_id', $token->user_id)->first();
 
-            if (! $user || ! $device || $device->revoked_at !== null) {
+            if (! $user || ! $device) {
                 throw new RuntimeException('Invalid refresh token.');
             }
 
@@ -54,6 +54,10 @@ class RefreshDeviceSession
                     'user_agent' => $userAgent,
                 ]);
 
+                return null;
+            }
+
+            if ($device->revoked_at !== null) {
                 throw new RuntimeException('Invalid refresh token.');
             }
 
@@ -88,5 +92,11 @@ class RefreshDeviceSession
                 'refresh_token' => $newRefreshToken,
             ];
         });
+
+        if ($result === null) {
+            throw new RuntimeException('Invalid refresh token.');
+        }
+
+        return $result;
     }
 }

@@ -21,13 +21,13 @@ class JwtTokenService
 
     public function __construct()
     {
-        $key = (string) config('app.key');
+        $key = (string) config('authentication.jwt_signing_key');
         $key = Str::startsWith($key, 'base64:')
             ? base64_decode(Str::after($key, 'base64:'), true)
             : $key;
 
         if (! is_string($key) || strlen($key) < 32) {
-            throw new \RuntimeException('APP_KEY must be a valid key of at least 32 bytes.');
+            throw new \RuntimeException('JWT_SIGNING_KEY must be a valid key of at least 32 bytes.');
         }
 
         $this->configuration = Configuration::forSymmetricSigner(

@@ -20,6 +20,8 @@ class RevokeDeviceSession
                 ->whereNull('revoked_at')
                 ->update(['revoked_at' => now(), 'revoked_reason' => 'logout']);
 
+            $device->forceFill(['revoked_at' => now()])->save();
+
             SecurityEvent::create([
                 'id' => (string) Str::uuid(),
                 'user_id' => $user->getKey(),

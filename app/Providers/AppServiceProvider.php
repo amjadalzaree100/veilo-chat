@@ -41,5 +41,9 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(5)->by('public_id:'.$request->input('public_id')),
             ];
         });
+
+        RateLimiter::for('authentication', fn (Request $request): Limit =>
+            Limit::perMinute(30)->by('ip:'.$request->ip())
+        );
     }
 }
