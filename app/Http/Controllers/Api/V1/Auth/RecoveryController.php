@@ -35,6 +35,7 @@ class RecoveryController extends Controller
                     'id' => str_replace('-', '', $result['device']->id),
                     'is_primary' => $result['device']->is_primary,
                 ],
+                'device_secret' => $result['session']['device_secret'],
                 'tokens' => [
                     'access_token' => $result['session']['access_token'],
                     'refresh_token' => $result['session']['refresh_token'],

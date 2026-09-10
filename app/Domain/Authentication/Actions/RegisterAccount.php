@@ -17,7 +17,7 @@ class RegisterAccount
 
     /**
      * @param array{username: string, display_name?: string|null, device_identifier: string, device_name?: string|null, platform: string, push_token?: string|null} $data
-     * @return array{user: User, device: Device, recovery_secret: string, session: array{access_token: string, refresh_token: string, expires_in: int}}
+     * @return array{user: User, device: Device, recovery_secret: string, session: array{access_token: string, refresh_token: string, expires_in: int, device_secret: string|null}}
      */
     public function handle(array $data): array
     {

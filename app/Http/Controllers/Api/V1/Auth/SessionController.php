@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api\V1\Auth;
 use App\Domain\Authentication\Actions\RefreshDeviceSession;
 use App\Domain\Authentication\Actions\RevokeAllSessions;
 use App\Domain\Authentication\Actions\RevokeDeviceSession;
+use App\Domain\Authentication\Actions\RestoreSessionByDeviceSecret;
 use App\Domain\Authentication\Models\Device;
 use App\Domain\Identity\Models\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\RefreshTokenRequest;
+use App\Http\Requests\Api\V1\Auth\RestoreSessionRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -25,6 +27,22 @@ class SessionController extends Controller
             );
         } catch (RuntimeException) {
             return response()->json(['message' => 'Invalid refresh token.'], 401);
+        }
+
+        return response()->json(['data' => $this->sessionPayload($session)]);
+    }
+
+    public function restore(RestoreSessionRequest $request, RestoreSessionByDeviceSecret $restore): JsonResponse
+    {
+        try {
+            $session = $restore->handle(
+                $request->string('device_identifier')->toString(),
+                $request->string('device_secret')->toString(),
+                (string) $request->ip(),
+                $request->userAgent(),
+            );
+        } catch (RuntimeException) {
+            return response()->json(['message' => 'Session restoration failed.'], 401);
         }
 
         return response()->json(['data' => $this->sessionPayload($session)]);

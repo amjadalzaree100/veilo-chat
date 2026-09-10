@@ -7,6 +7,7 @@ use App\Domain\Authentication\Models\RefreshToken;
 use App\Domain\Identity\Models\User;
 use App\Infrastructure\Jwt\JwtTokenService;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 class IssueDeviceSession
 {
@@ -15,10 +16,19 @@ class IssueDeviceSession
     }
 
     /**
-     * @return array{access_token: string, refresh_token: string, expires_in: int}
+     * @return array{access_token: string, refresh_token: string, expires_in: int, device_secret: string|null}
      */
     public function handle(User $user, Device $device): array
     {
+        $deviceSecret = null;
+
+        if ($device->device_secret_hash === null) {
+            $deviceSecret = bin2hex(random_bytes(64));
+            $device->forceFill([
+                'device_secret_hash' => Hash::make($deviceSecret),
+            ])->save();
+        }
+
         $refreshToken = Str::random(96);
 
         RefreshToken::create([
@@ -33,6 +43,7 @@ class IssueDeviceSession
         return [
             ...$this->issueAccessToken($user, $device),
             'refresh_token' => $refreshToken,
+            'device_secret' => $deviceSecret,
         ];
     }
 

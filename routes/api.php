@@ -11,6 +11,8 @@ Route::prefix('v1')->group(function (): void {
         ->middleware('throttle:registration');
     Route::post('/auth/refresh', [SessionController::class, 'refresh'])
         ->middleware('throttle:refresh');
+    Route::post('/auth/session/restore', [SessionController::class, 'restore'])
+        ->middleware('throttle:device-secret-restore');
     Route::post('/auth/recover', [RecoveryController::class, 'recover'])
         ->middleware('throttle:recovery');
 

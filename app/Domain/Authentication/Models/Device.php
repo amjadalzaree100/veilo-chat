@@ -18,6 +18,7 @@ class Device extends Model
         'id',
         'user_id',
         'device_identifier',
+        'device_secret_hash',
         'device_name',
         'platform',
         'push_token',
@@ -36,6 +37,10 @@ class Device extends Model
             'updated_at' => 'immutable_datetime',
         ];
     }
+
+    protected $hidden = [
+        'device_secret_hash',
+    ];
 
     public function user(): BelongsTo
     {

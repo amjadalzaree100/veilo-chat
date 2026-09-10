@@ -17,7 +17,7 @@ class RecoverAccount
 
     /**
      * @param array{public_id: string, recovery_secret: string, device_identifier: string, device_name?: string|null, platform: string, push_token?: string|null} $data
-     * @return array{user: User, device: Device, session: array{access_token: string, refresh_token: string, expires_in: int}}
+     * @return array{user: User, device: Device, session: array{access_token: string, refresh_token: string, expires_in: int, device_secret: string|null}}
      */
     public function handle(array $data, ?string $ipAddress, ?string $userAgent): array
     {

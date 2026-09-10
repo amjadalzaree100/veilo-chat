@@ -45,5 +45,15 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('authentication', fn (Request $request): Limit =>
             Limit::perMinute(30)->by('ip:'.$request->ip())
         );
+
+        RateLimiter::for('device-secret-restore', function (Request $request): array {
+            $identifier = (string) $request->input('device_identifier');
+
+            return [
+                Limit::perMinute(5)->by('device-secret-ip:'.$request->ip()),
+                Limit::perMinute(5)->by('device-secret-identifier:'.hash('sha256', $identifier)),
+                Limit::perMinute(5)->by('device-secret-failure:'.hash('sha256', $identifier)),
+            ];
+        });
     }
 }

@@ -29,6 +29,7 @@ class RegistrationController extends Controller
                     'is_primary' => $device->is_primary,
                 ],
                 'recovery_secret' => $result['recovery_secret'],
+                'device_secret' => $result['session']['device_secret'],
                 'tokens' => [
                     'access_token' => $result['session']['access_token'],
                     'refresh_token' => $result['session']['refresh_token'],
