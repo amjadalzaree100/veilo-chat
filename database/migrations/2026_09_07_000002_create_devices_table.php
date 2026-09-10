@@ -26,11 +26,13 @@ return new class extends Migration
             $table->index('user_id');
         });
 
-        DB::statement("ALTER TABLE devices ADD CONSTRAINT devices_platform_check CHECK (platform IN ('ios', 'android', 'web', 'desktop'))");
-        DB::statement("ALTER TABLE devices ADD CONSTRAINT devices_identifier_check CHECK (LENGTH(TRIM(device_identifier)) > 0)");
-        DB::statement('CREATE UNIQUE INDEX devices_one_primary_per_user ON devices (user_id) WHERE is_primary = TRUE');
-        DB::statement('CREATE UNIQUE INDEX devices_active_identifier_unique ON devices (user_id, device_identifier) WHERE revoked_at IS NULL');
-        DB::statement('CREATE INDEX devices_user_active_idx ON devices (user_id, last_active_at DESC) WHERE revoked_at IS NULL');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE devices ADD CONSTRAINT devices_platform_check CHECK (platform IN ('ios', 'android', 'web', 'desktop'))");
+            DB::statement("ALTER TABLE devices ADD CONSTRAINT devices_identifier_check CHECK (LENGTH(TRIM(device_identifier)) > 0)");
+            DB::statement('CREATE UNIQUE INDEX devices_one_primary_per_user ON devices (user_id) WHERE is_primary = TRUE');
+            DB::statement('CREATE UNIQUE INDEX devices_active_identifier_unique ON devices (user_id, device_identifier) WHERE revoked_at IS NULL');
+            DB::statement('CREATE INDEX devices_user_active_idx ON devices (user_id, last_active_at DESC) WHERE revoked_at IS NULL');
+        }
     }
 
     public function down(): void

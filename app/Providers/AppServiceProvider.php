@@ -55,5 +55,14 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(5)->by('device-secret-failure:'.hash('sha256', $identifier)),
             ];
         });
+
+        RateLimiter::for('messaging', function (Request $request): array {
+            $user = $request->user();
+
+            return [
+                Limit::perMinute(120)->by('messaging-ip:'.$request->ip()),
+                Limit::perMinute(300)->by('messaging-user:'.($user?->getAuthIdentifier() ?? $request->ip())),
+            ];
+        });
     }
 }

@@ -29,10 +29,12 @@ return new class extends Migration
             $table->index('family_id');
         });
 
-        DB::statement('ALTER TABLE refresh_tokens ADD CONSTRAINT refresh_tokens_expiry_check CHECK (expires_at > created_at)');
-        DB::statement('ALTER TABLE refresh_tokens ADD CONSTRAINT refresh_tokens_self_replace_check CHECK (replaced_by IS NULL OR replaced_by <> id)');
-        DB::statement('ALTER TABLE refresh_tokens ADD CONSTRAINT refresh_tokens_revocation_check CHECK ((revoked_at IS NULL AND revoked_reason IS NULL) OR (revoked_at IS NOT NULL AND revoked_reason IS NOT NULL))');
-        DB::statement('CREATE INDEX refresh_tokens_active_idx ON refresh_tokens (user_id, expires_at) WHERE revoked_at IS NULL');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE refresh_tokens ADD CONSTRAINT refresh_tokens_expiry_check CHECK (expires_at > created_at)');
+            DB::statement('ALTER TABLE refresh_tokens ADD CONSTRAINT refresh_tokens_self_replace_check CHECK (replaced_by IS NULL OR replaced_by <> id)');
+            DB::statement('ALTER TABLE refresh_tokens ADD CONSTRAINT refresh_tokens_revocation_check CHECK ((revoked_at IS NULL AND revoked_reason IS NULL) OR (revoked_at IS NOT NULL AND revoked_reason IS NOT NULL))');
+            DB::statement('CREATE INDEX refresh_tokens_active_idx ON refresh_tokens (user_id, expires_at) WHERE revoked_at IS NULL');
+        }
     }
 
     public function down(): void

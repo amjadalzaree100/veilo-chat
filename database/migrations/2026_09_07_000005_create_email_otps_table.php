@@ -25,13 +25,15 @@ return new class extends Migration
             $table->index(['user_id', 'created_at']);
         });
 
-        DB::statement('ALTER TABLE email_otps ADD CONSTRAINT email_otps_attempts_check CHECK (attempts >= 0)');
-        DB::statement('ALTER TABLE email_otps ADD CONSTRAINT email_otps_max_attempts_check CHECK (max_attempts > 0)');
-        DB::statement('ALTER TABLE email_otps ADD CONSTRAINT email_otps_attempt_limit_check CHECK (attempts <= max_attempts)');
-        DB::statement("ALTER TABLE email_otps ADD CONSTRAINT email_otps_purpose_check CHECK (purpose IN ('link_email', 'login', 'recovery'))");
-        DB::statement('ALTER TABLE email_otps ADD CONSTRAINT email_otps_expiry_check CHECK (expires_at > created_at)');
-        DB::statement('CREATE INDEX email_otps_email_idx ON email_otps (LOWER(email), created_at DESC)');
-        DB::statement('CREATE INDEX email_otps_active_idx ON email_otps (LOWER(email), purpose, expires_at) WHERE consumed_at IS NULL');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE email_otps ADD CONSTRAINT email_otps_attempts_check CHECK (attempts >= 0)');
+            DB::statement('ALTER TABLE email_otps ADD CONSTRAINT email_otps_max_attempts_check CHECK (max_attempts > 0)');
+            DB::statement('ALTER TABLE email_otps ADD CONSTRAINT email_otps_attempt_limit_check CHECK (attempts <= max_attempts)');
+            DB::statement("ALTER TABLE email_otps ADD CONSTRAINT email_otps_purpose_check CHECK (purpose IN ('link_email', 'login', 'recovery'))");
+            DB::statement('ALTER TABLE email_otps ADD CONSTRAINT email_otps_expiry_check CHECK (expires_at > created_at)');
+            DB::statement('CREATE INDEX email_otps_email_idx ON email_otps (LOWER(email), created_at DESC)');
+            DB::statement('CREATE INDEX email_otps_active_idx ON email_otps (LOWER(email), purpose, expires_at) WHERE consumed_at IS NULL');
+        }
     }
 
     public function down(): void
