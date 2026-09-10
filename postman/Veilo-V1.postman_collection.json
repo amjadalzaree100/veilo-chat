@@ -1,0 +1,278 @@
+{
+  "info": {
+    "_postman_id": "8d6e0a91-7f0d-4a94-9e4e-3b9e0a4d6f01",
+    "name": "Veilo API v1",
+    "description": "Complete Veilo V1 authentication and account collection. Run Register first. Its test script stores access_token, refresh_token, public_id, recovery_secret, device_secret, and device_identifier in collection variables. Secrets are included only in request bodies or saved variables and must never be committed to source control or logged by a client application.\n\nBase URL: {{base_url}}\nAuthentication: protected requests use Authorization: Bearer {{access_token}}.\nIDs: public_id, user id, and device id are returned without hyphens.\n\nExpected status codes: 201 for register/recover, 200 for successful reads and actions, 401 for authentication or secret failures, 409 for recovery-secret state conflicts, 422 for validation errors, and 429 for rate limits.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "public_id", "value": "" },
+    { "key": "user_id", "value": "" },
+    { "key": "device_id", "value": "" },
+    { "key": "device_identifier", "value": "" },
+    { "key": "device_secret", "value": "" },
+    { "key": "recovery_secret", "value": "" },
+    { "key": "recovery_device_identifier", "value": "" },
+    { "key": "recovery_device_secret", "value": "" },
+    { "key": "recovery_refresh_token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Registration",
+      "description": "Creates an account and immediately authenticates the installation. The response contains recovery_secret and device_secret; the client must store them in secure storage immediately.",
+      "item": [
+        {
+          "name": "Register - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{username}}\",\n  \"display_name\": \"Veilo Postman\",\n  \"device_identifier\": \"{{device_identifier}}\",\n  \"device_name\": \"Postman Client\",\n  \"platform\": \"web\",\n  \"push_token\": null\n}" },
+            "url": "{{base_url}}/api/v1/auth/register",
+            "description": "Expected: 201. username is 3-50 characters and may contain only letters, numbers, and underscore. platform: ios, android, web, or desktop."
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.collectionVariables.set('username', 'pm_user_' + Date.now());", "pm.collectionVariables.set('device_identifier', 'pm-device-' + Date.now());"] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 201', function () { pm.response.to.have.status(201); });", "const json = pm.response.json();", "pm.collectionVariables.set('access_token', json.data.tokens.access_token);", "pm.collectionVariables.set('refresh_token', json.data.tokens.refresh_token);", "pm.collectionVariables.set('user_id', json.data.user.id);", "pm.collectionVariables.set('public_id', json.data.user.public_id);", "pm.collectionVariables.set('device_id', json.data.device.id);", "pm.collectionVariables.set('device_secret', json.data.device_secret);", "pm.collectionVariables.set('recovery_secret', json.data.recovery_secret);"] } }
+          ]
+        },
+        {
+          "name": "Register - validation failure",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"bad username!\",\n  \"device_identifier\": \"\",\n  \"platform\": \"unknown\"\n}" },
+            "url": "{{base_url}}/api/v1/auth/register",
+            "description": "Expected: 422 with a validation errors object."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 422', function () { pm.response.to.have.status(422); });"] } }]
+        },
+        {
+          "name": "Register - duplicate username failure",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{username}}\",\n  \"device_identifier\": \"duplicate-device-{{$timestamp}}\",\n  \"platform\": \"web\"\n}" },
+            "url": "{{base_url}}/api/v1/auth/register",
+            "description": "Run after Register - success. Expected: 422 validation failure for an already used username."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 422', function () { pm.response.to.have.status(422); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "02 - Session",
+      "description": "Run in this order: refresh or restore, then logout. Restore uses the device_secret captured during registration and is intended for long-term inactivity after the normal refresh token expires.",
+      "item": [
+        {
+          "name": "Refresh - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}" },
+            "url": "{{base_url}}/api/v1/auth/refresh",
+            "description": "Expected: 200. The old refresh token is revoked and the returned token replaces it."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "const json = pm.response.json();", "pm.collectionVariables.set('access_token', json.data.tokens.access_token);", "pm.collectionVariables.set('refresh_token', json.data.tokens.refresh_token);"] } }]
+        },
+        {
+          "name": "Refresh - invalid or reused token failure",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refresh_token\": \"invalid-or-already-used-token\"\n}" },
+            "url": "{{base_url}}/api/v1/auth/refresh",
+            "description": "Expected: 401. Reusing a previously rotated token also returns 401 and records a reuse security event."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 401', function () { pm.response.to.have.status(401); });"] } }]
+        },
+        {
+          "name": "Restore session by device secret - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"device_identifier\": \"{{device_identifier}}\",\n  \"device_secret\": \"{{device_secret}}\"\n}" },
+            "url": "{{base_url}}/api/v1/auth/session/restore",
+            "description": "Expected: 200. The API returns new access and refresh tokens. It does not return the device secret again. Store the secret only in Keychain/Keystore on the client."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "const json = pm.response.json();", "pm.collectionVariables.set('access_token', json.data.tokens.access_token);", "pm.collectionVariables.set('refresh_token', json.data.tokens.refresh_token);", "pm.test('Device secret is not returned', function () { pm.expect(json.data.device_secret).to.be.undefined; });"] } }]
+        },
+        {
+          "name": "Restore session - invalid secret failure",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"device_identifier\": \"{{device_identifier}}\",\n  \"device_secret\": \"wrong-device-secret-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"\n}" },
+            "url": "{{base_url}}/api/v1/auth/session/restore",
+            "description": "Expected: 401 with the same generic message used for an unknown device. Repeated failures eventually return 429."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 401', function () { pm.response.to.have.status(401); });"] } }]
+        },
+        {
+          "name": "Logout current device - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "url": "{{base_url}}/api/v1/auth/logout",
+            "description": "Expected: 200. The current device is revoked and its existing access JWT stops authenticating immediately."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Logout current device - unauthenticated failure",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/auth/logout",
+            "description": "Expected: 401 when Authorization is missing."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 401', function () { pm.response.to.have.status(401); });"] } }]
+        },
+        {
+          "name": "Logout all devices - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "url": "{{base_url}}/api/v1/auth/logout-all",
+            "description": "Expected: 200. All active device sessions are revoked."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "03 - Account Recovery",
+      "description": "Recovery Secret is account-level and must be protected by the client. Recovery creates a new device and returns a new device_secret for secure storage.",
+      "item": [
+        {
+          "name": "Recover account - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"public_id\": \"{{public_id}}\",\n  \"recovery_secret\": \"{{recovery_secret}}\",\n  \"device_identifier\": \"{{recovery_device_identifier}}\",\n  \"device_name\": \"Recovery Client\",\n  \"platform\": \"web\",\n  \"push_token\": null\n}" },
+            "url": "{{base_url}}/api/v1/auth/recover",
+            "description": "Expected: 201. Set recovery_device_identifier before running if needed; it must differ from an active device identifier for the same account."
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["if (!pm.collectionVariables.get('recovery_device_identifier')) { pm.collectionVariables.set('recovery_device_identifier', 'pm-recovery-' + Date.now()); }"] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 201', function () { pm.response.to.have.status(201); });", "const json = pm.response.json();", "pm.collectionVariables.set('recovery_device_secret', json.data.device_secret);", "pm.collectionVariables.set('recovery_refresh_token', json.data.tokens.refresh_token);"] } }
+          ]
+        },
+        {
+          "name": "Recover account - invalid secret failure",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"public_id\": \"{{public_id}}\",\n  \"recovery_secret\": \"wrong-recovery-secret-xxxxxxxxxxxxxxxx\",\n  \"device_identifier\": \"failed-recovery-device\",\n  \"platform\": \"web\"\n}" },
+            "url": "{{base_url}}/api/v1/auth/recover",
+            "description": "Expected: 401 with a generic recovery failure response."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 401', function () { pm.response.to.have.status(401); });"] } }]
+        },
+        {
+          "name": "Get recovery secret - success",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "url": "{{base_url}}/api/v1/auth/recovery-secret",
+            "description": "Expected: 200 when the secret is visible. Do not display or log it except through an explicit local security flow."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Hide recovery secret - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"visible\": false\n}" },
+            "url": "{{base_url}}/api/v1/auth/recovery-secret/visibility",
+            "description": "Expected: 200. Hiding does not invalidate the Recovery Secret."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Show recovery secret - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"visible\": true\n}" },
+            "url": "{{base_url}}/api/v1/auth/recovery-secret/visibility",
+            "description": "Expected: 200. Run after Hide recovery secret."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Regenerate recovery secret - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "url": "{{base_url}}/api/v1/auth/recovery-secret/regenerate",
+            "description": "Expected: 200 when the secret is visible. Existing sessions remain active. Save the new secret if testing recovery afterwards."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "const json = pm.response.json();", "pm.collectionVariables.set('recovery_secret', json.data.recovery_secret);"] } }]
+        },
+        {
+          "name": "Get recovery secret while hidden - failure",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "url": "{{base_url}}/api/v1/auth/recovery-secret",
+            "description": "Run after Hide recovery secret. Expected: 409."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 409', function () { pm.response.to.have.status(409); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "04 - Account Privacy",
+      "description": "Changes the authenticated account privacy setting. Allowed values are public and private.",
+      "item": [
+        {
+          "name": "Set privacy - private",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"privacy\": \"private\"\n}" },
+            "url": "{{base_url}}/api/v1/account/privacy",
+            "description": "Expected: 200."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Set privacy - public",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"privacy\": \"public\"\n}" },
+            "url": "{{base_url}}/api/v1/account/privacy",
+            "description": "Expected: 200."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Set privacy - validation failure",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"privacy\": \"unknown\"\n}" },
+            "url": "{{base_url}}/api/v1/account/privacy",
+            "description": "Expected: 422."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 422', function () { pm.response.to.have.status(422); });"] } }]
+        }
+      ]
+    }
+  ]
+}
