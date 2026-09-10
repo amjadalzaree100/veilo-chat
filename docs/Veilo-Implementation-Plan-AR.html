@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>خطة إنجاز تطبيق VEILO</title>
+<style>
+body { font-family: Arial, Tahoma, sans-serif; direction: rtl; line-height: 1.8; color: #1f2937; margin: 2cm; }
+h1 { color: #164e63; text-align: center; font-size: 28pt; }
+h2 { color: #155e75; border-bottom: 2px solid #155e75; padding-bottom: 5px; margin-top: 26px; }
+h3 { color: #0f766e; margin-top: 18px; }
+p { font-size: 11pt; }
+li { margin: 5px 0; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; }
+th { background: #dbeafe; color: #164e63; font-weight: bold; }
+th, td { border: 1px solid #94a3b8; padding: 7px; vertical-align: top; }
+.done { color: #166534; font-weight: bold; }
+.pending { color: #92400e; font-weight: bold; }
+.note { background: #f0f9ff; border-right: 5px solid #0284c7; padding: 10px; }
+.warning { background: #fff7ed; border-right: 5px solid #ea580c; padding: 10px; }
+.code { direction: ltr; text-align: left; background: #f1f5f9; padding: 8px; font-family: Consolas, monospace; }
+.small { color: #475569; font-size: 9pt; }
+</style>
+</head>
+<body>
+<h1>خطة إنجاز تطبيق VEILO</h1>
+<p style="text-align:center"><strong>خطة تنفيذ تقنية مفصلة وفق PRD V1</strong><br>الإصدار: 1.0 &nbsp; | &nbsp; آخر تحديث: 10 سبتمبر 2026</p>
+
+<div class="note"><strong>طريقة قراءة الوثيقة:</strong> الرمز ☑ يعني أن العمل موجود في الكود الحالي، والرمز ☐ يعني أنه لم يُنفذ بعد أو يحتاج تحققاً إنتاجياً. لا يعني وجود الكود أن الاختبارات التشغيلية قد نجحت؛ يجب تشغيل الاختبارات قبل اعتماد أي بند نهائياً.</div>
+
+<h2>1. الحالة الحالية والقرار الهندسي</h2>
+<p>المشروع مبني على Laravel وPostgreSQL وبنية Modular Monolith مع فصل Domain Actions وHTTP Controllers. الأولوية الحالية هي تثبيت Messaging Core واختبارها قبل إضافة WebSocket أو واجهة المستخدم.</p>
+<table>
+<tr><th>المجال</th><th>الحالة</th><th>الملاحظات</th></tr>
+<tr><td>الحسابات والمصادقة</td><td class="done">☑ منفذ جزئياً</td><td>Registration، JWT، Refresh Rotation، Recovery، Device Secret، Logout.</td></tr>
+<tr><td>توثيق API</td><td class="done">☑ منفذ</td><td>Postman Collection وEnvironment وREADME.</td></tr>
+<tr><td>Messaging Core</td><td class="done">☑ منفذ كنسخة أولية</td><td>Conversations، Messages، Blocks، Encryption، Idempotency، Cursor Pagination.</td></tr>
+<tr><td>اختبارات Messaging</td><td class="pending">☑ مكتوبة / ☐ منفذة فعلياً</td><td>اختبارات PHPUnit موجودة، لكن تشغيلها يحتاج تثبيت vendor وبيئة قاعدة بيانات مناسبة.</td></tr>
+<tr><td>WebSocket وReverb</td><td class="pending">☐ غير منفذ</td><td>يأتي بعد تثبيت REST Messaging.</td></tr>
+<tr><td>Notifications وSearch</td><td class="pending">☐ غير منفذ</td><td>يُنفذان عبر Queue وOutbox بعد الرسائل.</td></tr>
+</table>
+
+<h2>2. المرحلة الأولى: تجهيز بيئة التطوير والجودة</h2>
+<table>
+<tr><th>الحالة</th><th>الخطوة</th><th>طريقة الإنجاز ومعيار القبول</th></tr>
+<tr><td class="done">☑</td><td>تثبيت PHP وLaravel وPostgreSQL</td><td>تشغيل التطبيق والاتصال بقاعدة PostgreSQL 16 أو أحدث.</td></tr>
+<tr><td class="done">☑</td><td>إضافة متغيرات البيئة الأمنية</td><td>ضبط APP_KEY وJWT_SIGNING_KEY وMESSAGE_ENCRYPTION_KEY وعدم وضعها في Git.</td></tr>
+<tr><td class="done">☑</td><td>إضافة migrations للمجالات الأساسية</td><td>وجود users وdevices وrefresh_tokens وsecurity_events وmessaging tables.</td></tr>
+<tr><td class="done">☑</td><td>توافق migrations مع بيئة الاختبار</td><td>أوامر PostgreSQL الخاصة محمية بشرط المحرك، مع بقاء قيود PostgreSQL كاملة في الإنتاج.</td></tr>
+<tr><td class="pending">☐</td><td>تثبيت Composer dependencies</td><td><span class="code">composer install</span> ثم التأكد من وجود PHPUnit وPint داخل vendor.</td></tr>
+<tr><td class="pending">☐</td><td>إضافة CI Pipeline</td><td>تشغيل lint وPint وPHPUnit وmigrate:fresh في كل Pull Request.</td></tr>
+<tr><td class="pending">☐</td><td>إضافة PostgreSQL Test Service</td><td>اختبار القيود والفهارس الفعلية على PostgreSQL، وعدم الاعتماد على SQLite وحده.</td></tr>
+</table>
+
+<h2>3. المرحلة الثانية: الحسابات والهوية</h2>
+<table>
+<tr><th>الحالة</th><th>المتطلب</th><th>التفاصيل ومعيار القبول</th></tr>
+<tr><td class="done">☑</td><td>التسجيل باسم المستخدم فقط</td><td>إنشاء الحساب وإصدار الجلسة مباشرة دون كلمة مرور أو بريد.</td></tr>
+<tr><td class="done">☑</td><td>Public ID وInternal ID</td><td>UUID مستقلان، ويُعادان للعميل بدون شرطات.</td></tr>
+<tr><td class="done">☑</td><td>Privacy API</td><td>تغيير public/private عبر endpoint مصادق عليه.</td></tr>
+<tr><td class="pending">☐</td><td>تغيير اسم المستخدم</td><td>إضافة API وAction مع تحرير الاسم القديم فوراً وقيد فريد للحسابات النشطة.</td></tr>
+<tr><td class="pending">☐</td><td>حذف الحساب Soft Delete</td><td>منع login وrefresh وrestore بعد الحذف، وتحرير username وemail.</td></tr>
+<tr><td class="pending">☐</td><td>ربط البريد الإلكتروني</td><td>OTP للإصدار والتحقق، مدة 10 دقائق، حد أقصى 5 محاولات، ومنع enumeration.</td></tr>
+<tr><td class="pending">☐</td><td>اختبارات الهوية</td><td>اختبار uniqueness، الحذف، privacy، Public ID، وOTP success/failure.</td></tr>
+</table>
+
+<h2>4. المرحلة الثالثة: المصادقة والجلسات والأجهزة</h2>
+<table>
+<tr><th>الحالة</th><th>المتطلب</th><th>معيار القبول</th></tr>
+<tr><td class="done">☑</td><td>Access JWT قصير العمر</td><td>مدة تقريباً 15 دقيقة مع توقيع مستقل عن APP_KEY.</td></tr>
+<tr><td class="done">☑</td><td>Refresh Token Rotation</td><td>التوكن opaque وهاشه فقط في قاعدة البيانات، والتوكن القديم لا يعاد استخدامه.</td></tr>
+<tr><td class="done">☑</td><td>Reuse Detection</td><td>إلغاء عائلة التوكن المتأثرة وتسجيل Security Event دون إلغاء جلسات المستخدم الأخرى.</td></tr>
+<tr><td class="done">☑</td><td>Logout current/all</td><td>إبطال الجهاز وAccess JWT فوراً عبر revoked_at، مع الحفاظ على primary designation.</td></tr>
+<tr><td class="done">☑</td><td>Device Secret Recovery</td><td>توليد secret عشوائي، تخزين hash، وإصدار جلسة جديدة بعد التحقق.</td></tr>
+<tr><td class="pending">☐</td><td>JWT issuer وaudience validation</td><td>رفض JWT الموقع صحيحاً لكنه صادر لخدمة أو بيئة أخرى.</td></tr>
+<tr><td class="pending">☐</td><td>تدوير Device Secret</td><td>إبطال السر السابق وإصدار سر جديد مع Security Event.</td></tr>
+<tr><td class="pending">☐</td><td>إدارة Primary Device</td><td>ترقية جهاز أو إزالة primary فقط من الجهاز primary الحالي، مع قيد قاعدة البيانات.</td></tr>
+<tr><td class="pending">☐</td><td>اختبار التزامن للمصادقة</td><td>اختبار refresh متزامن، logout أثناء refresh، وrestore أثناء revoke.</td></tr>
+</table>
+
+<h2>5. المرحلة الرابعة: Messaging Core</h2>
+<h3>5.1 قاعدة البيانات والنماذج</h3>
+<table>
+<tr><th>الحالة</th><th>البند</th><th>التفاصيل</th></tr>
+<tr><td class="done">☑</td><td>Conversations</td><td>زوج canonical بين user_low_id وuser_high_id مع unique constraint وcheck للترتيب.</td></tr>
+<tr><td class="done">☑</td><td>Messages</td><td>sequence_no، reply_to_message_id، client_message_id، timestamps، soft delete.</td></tr>
+<tr><td class="done">☑</td><td>User Blocks</td><td>قيد فريد على blocker_id وblocked_id وحظر directional.</td></tr>
+<tr><td class="done">☑</td><td>الفهارس</td><td>فهارس المستخدمين والمحادثات والرسائل النشطة وidempotency في PostgreSQL.</td></tr>
+</table>
+
+<h3>5.2 الرسائل والحماية</h3>
+<table>
+<tr><th>الحالة</th><th>البند</th><th>معيار القبول</th></tr>
+<tr><td class="done">☑</td><td>تشفير at-rest</td><td>لا يُحفظ النص الصريح؛ يستخدم MessageCipher ومفتاحاً مستقلاً.</td></tr>
+<tr><td class="done">☑</td><td>Key rotation</td><td>دعم المفتاح الحالي والمفاتيح السابقة حسب encryption_key_version.</td></tr>
+<tr><td class="done">☑</td><td>Idempotency</td><td>إعادة client_message_id تعيد الرسالة السابقة ولا تنشئ صفاً جديداً.</td></tr>
+<tr><td class="done">☑</td><td>Reply validation</td><td>رفض reply إذا كان الهدف في محادثة مختلفة.</td></tr>
+<tr><td class="done">☑</td><td>Authorization</td><td>المشارك فقط يقرأ أو يرسل، والمرسل فقط يعدل أو يحذف.</td></tr>
+<tr><td class="done">☑</td><td>Cursor pagination</td><td>ترتيب ثابت عبر sequence_no وعدم استخدام offset.</td></tr>
+<tr><td class="pending">☐</td><td>Delivered state</td><td>تحديث delivered عند وصول الرسالة إلى جهاز مستلم واحد على الأقل.</td></tr>
+<tr><td class="pending">☐</td><td>Read state</td><td>حالة قراءة على مستوى الحساب، متزامنة بين الأجهزة.</td></tr>
+<tr><td class="pending">☐</td><td>Conversation listing محسّن</td><td>إرجاع آخر رسالة وحالة القراءة لكل محادثة بعد اكتمال message states.</td></tr>
+</table>
+
+<h3>5.3 API الحالية</h3>
+<div class="code">
+POST   /api/v1/conversations<br>
+GET    /api/v1/conversations<br>
+GET    /api/v1/conversations/{conversation}/messages<br>
+POST   /api/v1/conversations/{conversation}/messages<br>
+PATCH  /api/v1/messages/{message}<br>
+DELETE /api/v1/messages/{message}<br>
+POST   /api/v1/blocks/{public_id}<br>
+DELETE /api/v1/blocks/{public_id}
+</div>
+
+<h2>6. المرحلة الخامسة: WebSocket وRealtime</h2>
+<table>
+<tr><th>الحالة</th><th>الخطوة</th><th>التنفيذ المطلوب</th></tr>
+<tr><td class="pending">☐</td><td>إعداد Laravel Reverb</td><td>ضبط broadcasting والـ queue وبيئة التطوير والإنتاج.</td></tr>
+<tr><td class="pending">☐</td><td>قنوات المحادثات</td><td>conversation.{id} مع authorization يتحقق من عضوية المستخدم.</td></tr>
+<tr><td class="pending">☐</td><td>قناة الجهاز</td><td>device.{id} لأحداث logout وrevocation وrefresh reuse.</td></tr>
+<tr><td class="pending">☐</td><td>أحداث الرسائل</td><td>MessageCreated وUpdated وDeleted وDelivered وRead.</td></tr>
+<tr><td class="pending">☐</td><td>إعادة المصادقة</td><td>إعادة subscribe قبل انتهاء JWT وعدم إبقاء اتصال بتوكن منتهي.</td></tr>
+</table>
+
+<h2>7. المرحلة السادسة: Outbox وNotifications</h2>
+<table>
+<tr><th>الحالة</th><th>الخطوة</th><th>معيار القبول</th></tr>
+<tr><td class="pending">☐</td><td>Outbox pattern</td><td>حفظ الحدث في نفس transaction ثم معالجته asynchronously.</td></tr>
+<tr><td class="pending">☐</td><td>In-app notifications</td><td>سجل notification لكل مستخدم مع read_at.</td></tr>
+<tr><td class="pending">☐</td><td>Push notifications</td><td>إرسال عبر Queue وعدم تعطيل حفظ الرسالة عند فشل المزود.</td></tr>
+<tr><td class="pending">☐</td><td>Push deliveries</td><td>تسجيل pending/sent/failed مع provider_message_id وerror_message.</td></tr>
+<tr><td class="pending">☐</td><td>Retry وDead Letter</td><td>سياسة retries وlast_error وmonitoring للمهام الفاشلة.</td></tr>
+</table>
+
+<h2>8. المرحلة السابعة: Search</h2>
+<table>
+<tr><th>الحالة</th><th>الخطوة</th><th>معيار القبول</th></tr>
+<tr><td class="pending">☐</td><td>Person Search</td><td>البحث بالusername وPublic ID مع privacy وblock rules.</td></tr>
+<tr><td class="pending">☐</td><td>Message indexing</td><td>إرسال الرسائل إلى Meilisearch أو Typesense عبر Queue.</td></tr>
+<tr><td class="pending">☐</td><td>Authorization قبل النتائج</td><td>لا يعرض search أي رسالة خارج محادثات المستخدم.</td></tr>
+<tr><td class="pending">☐</td><td>تحديث وفهرسة الحذف</td><td>تحديث السجل عند edit وحذفه من الفهرس عند delete.</td></tr>
+</table>
+
+<h2>9. المرحلة الثامنة: الاختبارات وضمان الجودة</h2>
+<table>
+<tr><th>الحالة</th><th>الاختبار</th><th>التفاصيل</th></tr>
+<tr><td class="done">☑</td><td>Feature Tests مكتوبة</td><td>إنشاء المحادثة، duplicate، block، encryption، reply، idempotency، pagination، permissions.</td></tr>
+<tr><td class="pending">☐</td><td>تشغيل PHPUnit فعلياً</td><td>تثبيت vendor وتشغيل <span class="code">php artisan test</span>.</td></tr>
+<tr><td class="pending">☐</td><td>PostgreSQL integration tests</td><td>اختبار unique constraints وpartial indexes وconcurrency على PostgreSQL.</td></tr>
+<tr><td class="pending">☐</td><td>Security tests</td><td>اختبار enumeration، brute force، replay، IDOR، JWT، وتسريب الأسرار.</td></tr>
+<tr><td class="pending">☐</td><td>Load tests</td><td>قياس إرسال الرسائل، pagination، refresh، والـ WebSocket connections.</td></tr>
+<tr><td class="pending">☐</td><td>Static analysis</td><td>تشغيل Pint وPHPStan أو Psalm مع منع أخطاء النوع.</td></tr>
+</table>
+
+<h2>10. المرحلة التاسعة: أمن الإنتاج والتشغيل</h2>
+<table>
+<tr><th>الحالة</th><th>الخطوة</th><th>الإجراء</th></tr>
+<tr><td class="pending">☐</td><td>Secret Manager</td><td>نقل APP_KEY وJWT_SIGNING_KEY وMESSAGE_ENCRYPTION_KEY إلى Secret Manager.</td></tr>
+<tr><td class="pending">☐</td><td>Redis production</td><td>استخدام Redis للـ cache والـ queue والـ rate limiting، وليس array/file.</td></tr>
+<tr><td class="pending">☐</td><td>TLS وHSTS</td><td>رفض HTTP، حماية headers، وعدم إرسال التوكنات دون TLS.</td></tr>
+<tr><td class="pending">☐</td><td>Logging policy</td><td>منع Authorization وrefresh/recovery/device secrets والرسائل من logs.</td></tr>
+<tr><td class="pending">☐</td><td>Monitoring</td><td>مراقبة errors، queues، database، rate limits، reuse events، وrestore failures.</td></tr>
+<tr><td class="pending">☐</td><td>Backup وRecovery</td><td>نسخ مشفرة، اختبار restore دوري، وخطة RPO/RTO موثقة.</td></tr>
+<tr><td class="pending">☐</td><td>Dependency scanning</td><td>تحديث Laravel/PHP والمكتبات ومعالجة CVEs قبل النشر.</td></tr>
+<tr><td class="pending">☐</td><td>Penetration testing</td><td>اختبار IDOR، authorization، session theft، rate limiting، وWebSocket.</td></tr>
+</table>
+
+<h2>11. المرحلة العاشرة: واجهة المستخدم والنشر</h2>
+<table>
+<tr><th>الحالة</th><th>الخطوة</th><th>معيار الإنجاز</th></tr>
+<tr><td class="done">☑</td><td>Postman API Collection</td><td>توثيق API الحالي مع أمثلة النجاح والفشل والتوكنات.</td></tr>
+<tr><td class="pending">☐</td><td>تطبيق العميل</td><td>تنفيذ التسجيل، secure storage، refresh، restore، المحادثات والـ WebSocket.</td></tr>
+<tr><td class="pending">☐</td><td>حماية Device Secret في العميل</td><td>iOS Keychain ThisDeviceOnly وAndroid Keystore مع منع backup.</td></tr>
+<tr><td class="pending">☐</td><td>Staging environment</td><td>نشر نسخة staging ببيانات وهمية وقياس كامل قبل الإنتاج.</td></tr>
+<tr><td class="pending">☐</td><td>Database migration deployment</td><td>نسخ احتياطي ثم migrate ثم smoke tests ثم مراقبة.</td></tr>
+<tr><td class="pending">☐</td><td>Production release</td><td>نشر تدريجي مع rollback plan ومراقبة أول 24 ساعة.</td></tr>
+</table>
+
+<h2>12. أوامر التشغيل والتحقق</h2>
+<p class="code">composer install<br>php artisan key:generate<br>php artisan migrate<br>php artisan route:list<br>php artisan test<br>vendor/bin/pint --test</p>
+<p>يجب ضبط PostgreSQL وRedis قبل اختبارات التكامل. إذا تم استخدام SQLite للاختبارات السريعة، يجب إبقاء PostgreSQL هو الاختبار المرجعي للقيود والفهارس الخاصة بالـ PRD.</p>
+
+<h2>13. بوابة قبول الإصدار V1</h2>
+<ul>
+<li>☐ جميع متطلبات P0 مغطاة بالكود واختبارات ناجحة.</li>
+<li>☐ لا توجد نتائج High أو Critical في security review.</li>
+<li>☐ كل migrations اختُبرت على نسخة PostgreSQL نظيفة ونسخة تحتوي بيانات.</li>
+<li>☐ لا توجد أسرار أو رسائل أو توكنات في logs أو Postman committed variables.</li>
+<li>☐ تم اختبار logout وrefresh reuse وrecovery وDevice Secret على أكثر من جهاز.</li>
+<li>☐ تم اختبار block وprivacy وauthorization باستخدام مستخدمين مختلفين.</li>
+<li>☐ تم اختبار WebSocket expiration وreconnect بعد تجديد JWT.</li>
+<li>☐ تم تشغيل load test وقياس زمن الاستجابة ومعدل الأخطاء.</li>
+<li>☐ توجد خطة rollback وbackup وincident response قبل النشر.</li>
+</ul>
+
+<div class="warning"><strong>ملاحظة إنتاجية:</strong> لا تعتبر البنود التي تحمل ☑ مكتملة إنتاجياً إلا بعد تشغيل الاختبارات فعلياً على PostgreSQL وإغلاق متطلبات التشفير والمراقبة والنسخ الاحتياطي. الكود الحالي يغطي أساس Messaging Core والمصادقة، بينما Realtime وNotifications وSearch وDelivered/Read ما زالت مراحل لاحقة.</div>
+</body>
+</html>

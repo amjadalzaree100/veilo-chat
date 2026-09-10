@@ -24,10 +24,12 @@ return new class extends Migration
             $table->timestampTz('updated_at')->useCurrent();
         });
 
-        DB::statement("ALTER TABLE users ADD CONSTRAINT users_privacy_check CHECK (privacy IN ('public', 'private'))");
-        DB::statement('CREATE UNIQUE INDEX users_username_active_unique ON users (LOWER(username)) WHERE deleted_at IS NULL');
-        DB::statement('CREATE UNIQUE INDEX users_email_active_unique ON users (LOWER(email)) WHERE deleted_at IS NULL AND email IS NOT NULL');
-        DB::statement('CREATE INDEX users_username_search_idx ON users (LOWER(username)) WHERE deleted_at IS NULL');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE users ADD CONSTRAINT users_privacy_check CHECK (privacy IN ('public', 'private'))");
+            DB::statement('CREATE UNIQUE INDEX users_username_active_unique ON users (LOWER(username)) WHERE deleted_at IS NULL');
+            DB::statement('CREATE UNIQUE INDEX users_email_active_unique ON users (LOWER(email)) WHERE deleted_at IS NULL AND email IS NOT NULL');
+            DB::statement('CREATE INDEX users_username_search_idx ON users (LOWER(username)) WHERE deleted_at IS NULL');
+        }
     }
 
     public function down(): void

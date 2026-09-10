@@ -20,6 +20,7 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="JWT_SIGNING_KEY" value="testing-jwt-signing-key-32-bytes-long!!"/>
+        <env name="MESSAGE_ENCRYPTION_KEY" value="01234567890123456789012345678901"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
