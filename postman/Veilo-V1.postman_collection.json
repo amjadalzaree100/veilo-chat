@@ -17,7 +17,13 @@
     { "key": "recovery_secret", "value": "" },
     { "key": "recovery_device_identifier", "value": "" },
     { "key": "recovery_device_secret", "value": "" },
-    { "key": "recovery_refresh_token", "value": "" }
+    { "key": "recovery_refresh_token", "value": "" },
+    { "key": "recipient_public_id", "value": "" },
+    { "key": "recipient_access_token", "value": "" },
+    { "key": "recipient_device_identifier", "value": "" },
+    { "key": "conversation_id", "value": "" },
+    { "key": "message_id", "value": "" },
+    { "key": "message_cursor", "value": "" }
   ],
   "item": [
     {
@@ -271,6 +277,166 @@
             "description": "Expected: 422."
           },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 422', function () { pm.response.to.have.status(422); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "05 - Messaging",
+      "description": "Messaging Core flow. Run the setup request first, then create a conversation and send messages. Protected requests use the primary access_token; the recipient token is used only for permission-failure checks.",
+      "item": [
+        {
+          "name": "Setup recipient user - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{recipient_username}}\",\n  \"display_name\": \"Postman Recipient\",\n  \"device_identifier\": \"{{recipient_device_identifier}}\",\n  \"platform\": \"web\"\n}" },
+            "url": "{{base_url}}/api/v1/auth/register",
+            "description": "Expected: 201. Creates a second account used to test one-to-one authorization and blocking."
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.collectionVariables.set('recipient_username', 'pm_recipient_' + Date.now());", "pm.collectionVariables.set('recipient_device_identifier', 'pm-recipient-device-' + Date.now());"] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 201', function () { pm.response.to.have.status(201); });", "const json = pm.response.json();", "pm.collectionVariables.set('recipient_public_id', json.data.user.public_id);", "pm.collectionVariables.set('recipient_access_token', json.data.tokens.access_token);"] } }
+          ]
+        },
+        {
+          "name": "Create conversation - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"participant_public_id\": \"{{recipient_public_id}}\"\n}" },
+            "url": "{{base_url}}/api/v1/conversations",
+            "description": "Expected: 201. The participant must be an active account and neither side may block the other."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 201', function () { pm.response.to.have.status(201); });", "const json = pm.response.json();", "pm.collectionVariables.set('conversation_id', json.data.conversation.id);"] } }]
+        },
+        {
+          "name": "Create conversation - duplicate prevention",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"participant_public_id\": \"{{recipient_public_id}}\"\n}" },
+            "url": "{{base_url}}/api/v1/conversations",
+            "description": "Expected: 200 and the existing conversation, never a second conversation row."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "pm.test('Existing conversation is returned', function () { pm.expect(pm.response.json().data.conversation.id).to.eql(pm.collectionVariables.get('conversation_id')); });"] } }]
+        },
+        {
+          "name": "Send message - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"body\": \"Hello from Veilo Postman\",\n  \"client_message_id\": \"pm-message-{{$timestamp}}\"\n}" },
+            "url": "{{base_url}}/api/v1/conversations/{{conversation_id}}/messages",
+            "description": "Expected: 201. The server stores ciphertext only and returns plaintext only to authorized participants."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 201', function () { pm.response.to.have.status(201); });", "const json = pm.response.json();", "pm.collectionVariables.set('message_id', json.data.message.id);", "pm.collectionVariables.set('client_message_id', json.data.message.client_message_id);"] } }]
+        },
+        {
+          "name": "Send message - idempotency retry",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"body\": \"This retry body must not create a second message\",\n  \"client_message_id\": \"{{client_message_id}}\"\n}" },
+            "url": "{{base_url}}/api/v1/conversations/{{conversation_id}}/messages",
+            "description": "Expected: 200 with Existing message returned. The message count must remain unchanged."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "pm.test('Same message is returned', function () { pm.expect(pm.response.json().data.message.id).to.eql(pm.collectionVariables.get('message_id')); });"] } }]
+        },
+        {
+          "name": "Send reply - invalid target failure",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"body\": \"Invalid reply target\",\n  \"reply_to_message_id\": \"00000000000000000000000000000000\"\n}" },
+            "url": "{{base_url}}/api/v1/conversations/{{conversation_id}}/messages",
+            "description": "Expected: 422 because the reply target does not belong to this conversation."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 422', function () { pm.response.to.have.status(422); });"] } }]
+        },
+        {
+          "name": "List conversations - cursor pagination",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "url": "{{base_url}}/api/v1/conversations?per_page=20",
+            "description": "Expected: 200 with conversations and pagination.next_cursor."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "List messages - cursor pagination",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "url": "{{base_url}}/api/v1/conversations/{{conversation_id}}/messages?per_page=20",
+            "description": "Expected: 200 with messages and pagination cursors. Deleted message bodies are null."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "pm.collectionVariables.set('message_cursor', pm.response.json().data.pagination.next_cursor || '');"] } }]
+        },
+        {
+          "name": "Edit message - success",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"body\": \"Edited message from Postman\"\n}" },
+            "url": "{{base_url}}/api/v1/messages/{{message_id}}",
+            "description": "Expected: 200. Only the original sender can edit."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "pm.test('Body was edited', function () { pm.expect(pm.response.json().data.message.body).to.eql('Edited message from Postman'); });"] } }]
+        },
+        {
+          "name": "Edit message - permission failure",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{recipient_access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"body\": \"Unauthorized edit\"\n}" },
+            "url": "{{base_url}}/api/v1/messages/{{message_id}}",
+            "description": "Expected: 403 because the recipient is not the sender."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 403', function () { pm.response.to.have.status(403); });"] } }]
+        },
+        {
+          "name": "Block recipient - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "url": "{{base_url}}/api/v1/blocks/{{recipient_public_id}}",
+            "description": "Expected: 200. Blocking is directional and prevents new conversations and message sending."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Send message while blocked - failure",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"body\": \"Blocked message\"\n}" },
+            "url": "{{base_url}}/api/v1/conversations/{{conversation_id}}/messages",
+            "description": "Expected: 403. Existing conversations remain stored, but messaging is restricted."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 403', function () { pm.response.to.have.status(403); });"] } }]
+        },
+        {
+          "name": "Unblock recipient - success",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "url": "{{base_url}}/api/v1/blocks/{{recipient_public_id}}",
+            "description": "Expected: 200. Normal interaction is restored subject to privacy rules."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });"] } }]
         }
       ]
     }

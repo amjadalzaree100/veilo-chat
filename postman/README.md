@@ -15,6 +15,7 @@
 5. Run `04 - Account Privacy` to change the authenticated account visibility.
 6. Run logout requests last because they revoke the current device or all devices.
 7. Run logout-current and logout-all as separate scenarios; after one succeeds, obtain a new session before testing the other.
+8. Run `05 - Messaging` to create a second user, create a one-to-one conversation, send and edit messages, test idempotency, pagination, permissions, and blocking.
 
 The collection contains both success and failure examples. Do not run every request as one linear collection run: hidden/visible recovery-secret requests and logout requests intentionally change server state.
 
@@ -47,3 +48,15 @@ Public endpoints are registration, refresh, recovery, and device-secret restore.
 - Validation errors normally return HTTP 422 with an `errors` object.
 - Authentication and secret failures return HTTP 401 with a generic `message`.
 - Recovery Secret hidden-state conflicts return HTTP 409.
+
+## Messaging requests
+
+- `POST /api/v1/conversations` body: `{ "participant_public_id": "<32 hex characters>" }`.
+- `GET /api/v1/conversations` supports `per_page` and `cursor`.
+- `POST /api/v1/conversations/{conversation}/messages` body requires `body`; `client_message_id` and `reply_to_message_id` are optional.
+- `GET /api/v1/conversations/{conversation}/messages` supports cursor pagination with `per_page` and `cursor`.
+- `PATCH /api/v1/messages/{message}` body: `{ "body": "..." }`; only the sender may edit.
+- `DELETE /api/v1/messages/{message}` performs a soft delete; only the sender may delete.
+- `POST /api/v1/blocks/{public_id}` blocks a user directionally.
+- `DELETE /api/v1/blocks/{public_id}` removes the directional block.
+- Messaging responses use `success`, `message`, `data`, and `errors`. Message plaintext is returned only to authorized conversation participants; ciphertext is never part of the response.

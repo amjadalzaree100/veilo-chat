@@ -38,3 +38,4 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/blocks/{blockedPublicId}', [BlockController::class, 'destroy'])->where('blockedPublicId', '[0-9a-fA-F]{32}')->middleware('throttle:messaging');
     });
 });
+  
