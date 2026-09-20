@@ -62,6 +62,35 @@ class EmailLinkingTest extends TestCase
         $this->assertSame('same@example.com', $firstUser->fresh()->email);
     }
 
+    public function test_otp_can_be_resent_and_previous_code_is_replaced(): void
+    {
+        Mail::fake();
+        [, $token] = $this->authenticatedUser();
+        $payload = ['email' => 'resend@example.com'];
+
+        $this->withToken($token)->postJson('/api/v1/account/email/otp', $payload)->assertAccepted();
+        $this->withToken($token)->postJson('/api/v1/account/email/otp/resend', $payload)->assertAccepted();
+
+        Mail::assertSent(EmailOtpMail::class, 2);
+        $this->assertSame(1, EmailOtp::query()->whereNull('consumed_at')->count());
+    }
+
+    public function test_email_can_be_unlinked_from_account(): void
+    {
+        [$user, $token] = $this->authenticatedUser();
+        $user->forceFill([
+            'email' => 'unlink@example.com',
+            'email_verified_at' => now(),
+        ])->save();
+
+        $this->withToken($token)->deleteJson('/api/v1/account/email')
+            ->assertOk()
+            ->assertJsonPath('message', 'The email was unlinked from your account.');
+
+        $this->assertNull($user->fresh()->email);
+        $this->assertNull($user->fresh()->email_verified_at);
+    }
+
     /** @return array{0: User, 1: string} */
     private function authenticatedUser(string $name = 'user'): array
     {

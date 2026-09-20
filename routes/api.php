@@ -27,7 +27,9 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/auth/recovery-secret/visibility', [RecoveryController::class, 'setVisibility']);
         Route::post('/auth/recovery-secret/regenerate', [RecoveryController::class, 'regenerate']);
         Route::post('/account/email/otp', [EmailController::class, 'requestOtp'])->middleware('throttle:email-otp-issue');
+        Route::post('/account/email/otp/resend', [EmailController::class, 'resendOtp'])->middleware('throttle:email-otp-issue');
         Route::post('/account/email/verify', [EmailController::class, 'verify'])->middleware('throttle:email-otp-verify');
+        Route::delete('/account/email', [EmailController::class, 'unlink'])->middleware('throttle:authentication');
         Route::patch('/account/privacy', [IdentityController::class, 'setPrivacy']);
         Route::post('/conversations', [ConversationController::class, 'store'])->middleware('throttle:messaging');
         Route::get('/conversations', [ConversationController::class, 'index'])->middleware('throttle:messaging');

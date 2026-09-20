@@ -23,7 +23,9 @@
     { "key": "recipient_device_identifier", "value": "" },
     { "key": "conversation_id", "value": "" },
     { "key": "message_id", "value": "" },
-    { "key": "message_cursor", "value": "" }
+    { "key": "message_cursor", "value": "" },
+    { "key": "email", "value": "" },
+    { "key": "email_otp", "value": "" }
   ],
   "item": [
     {
@@ -239,7 +241,60 @@
       ]
     },
     {
-      "name": "04 - Account Privacy",
+      "name": "04 - Account Email",
+      "description": "Email linking flow. Set the email collection variable to an inbox you can access, request an OTP, read the code from the email, set email_otp, then verify. All requests require the access_token from registration.",
+      "item": [
+        {
+          "name": "Request email OTP - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\"\n}" },
+            "url": "{{base_url}}/api/v1/account/email/otp",
+            "description": "Expected: 202. The OTP is valid for 10 minutes. Set the email collection variable before running. The code is sent to the email and is never returned by the API."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 202', function () { pm.response.to.have.status(202); });", "pm.test('OTP expiry is 600 seconds', function () { pm.expect(pm.response.json().data.expires_in).to.eql(600); });"] } }]
+        },
+        {
+          "name": "Resend email OTP - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\"\n}" },
+            "url": "{{base_url}}/api/v1/account/email/otp/resend",
+            "description": "Expected: 202. The previous unconsumed OTP is invalidated and a new OTP is sent. This endpoint has the same rate limit as OTP issuance."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 202', function () { pm.response.to.have.status(202); });"] } }]
+        },
+        {
+          "name": "Verify email OTP - success",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"code\": \"{{email_otp}}\"\n}" },
+            "url": "{{base_url}}/api/v1/account/email/verify",
+            "description": "Expected: 200. Copy the six-digit code from the latest email into the email_otp collection variable before running. The email is linked only after successful verification."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "pm.test('Email is verified', function () { pm.expect(pm.response.json().data.email).to.eql(pm.variables.replaceIn('{{email}}').toLowerCase()); });"] } }]
+        },
+        {
+          "name": "Unlink email - success",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+            "url": "{{base_url}}/api/v1/account/email",
+            "description": "Expected: 200. Removes the verified email and email_verified_at from the authenticated account. The email becomes available for another active account."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is 200', function () { pm.response.to.have.status(200); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "05 - Account Privacy",
       "description": "Changes the authenticated account privacy setting. Allowed values are public and private.",
       "item": [
         {
@@ -281,7 +336,7 @@
       ]
     },
     {
-      "name": "05 - Messaging",
+      "name": "06 - Messaging",
       "description": "Messaging Core flow. Run the setup request first, then create a conversation and send messages. Protected requests use the primary access_token; the recipient token is used only for permission-failure checks.",
       "item": [
         {

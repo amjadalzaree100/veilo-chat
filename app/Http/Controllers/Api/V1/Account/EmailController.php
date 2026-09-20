@@ -36,6 +36,11 @@ class EmailController extends Controller
         return response()->json(['data' => ['expires_in' => $expiresIn]], 202);
     }
 
+    public function resendOtp(RequestEmailOtpRequest $request, LinkEmail $linkEmail): JsonResponse
+    {
+        return $this->requestOtp($request, $linkEmail);
+    }
+
     public function verify(VerifyEmailOtpRequest $request, LinkEmail $linkEmail): JsonResponse
     {
         /** @var User $user */
@@ -62,5 +67,21 @@ class EmailController extends Controller
                 'email_verified_at' => $user->email_verified_at?->toISOString(),
             ],
         ]);
+    }
+
+    public function unlink(Request $request, LinkEmail $linkEmail): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        /** @var Device $device */
+        $device = $request->attributes->get('authenticated_device');
+
+        try {
+            $linkEmail->unlink($user, $device, $request->ip(), $request->userAgent());
+        } catch (RuntimeException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        }
+
+        return response()->json(['message' => 'The email was unlinked from your account.']);
     }
 }

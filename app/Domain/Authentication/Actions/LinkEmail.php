@@ -124,6 +124,40 @@ class LinkEmail
         }
     }
 
+    public function unlink(User $user, Device $device, ?string $ipAddress, ?string $userAgent): void
+    {
+        DB::transaction(function () use ($user, $device, $ipAddress, $userAgent): void {
+            $user->refresh();
+
+            if ($user->email === null) {
+                throw new RuntimeException('No email is linked to this account.');
+            }
+
+            $email = $user->email;
+
+            EmailOtp::query()
+                ->where('user_id', $user->getKey())
+                ->where('purpose', 'link_email')
+                ->whereNull('consumed_at')
+                ->update(['consumed_at' => now()]);
+
+            $user->forceFill([
+                'email' => null,
+                'email_verified_at' => null,
+            ])->save();
+
+            SecurityEvent::create([
+                'id' => (string) Str::uuid(),
+                'user_id' => $user->getKey(),
+                'device_id' => $device->getKey(),
+                'event_type' => 'email_unlinked',
+                'metadata' => ['email' => $email],
+                'ip_address' => $ipAddress,
+                'user_agent' => $userAgent,
+            ]);
+        });
+    }
+
     private function normalize(string $email): string
     {
         return Str::lower(trim($email));
