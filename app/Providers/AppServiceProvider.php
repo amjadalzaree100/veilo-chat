@@ -46,6 +46,24 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(30)->by('ip:'.$request->ip())
         );
 
+        RateLimiter::for('email-otp-issue', function (Request $request): array {
+            $user = $request->user();
+
+            return [
+                Limit::perMinute(3)->by('email-otp-issue-ip:'.$request->ip()),
+                Limit::perMinute(5)->by('email-otp-issue-user:'.($user?->getAuthIdentifier() ?? $request->ip())),
+            ];
+        });
+
+        RateLimiter::for('email-otp-verify', function (Request $request): array {
+            $user = $request->user();
+
+            return [
+                Limit::perMinute(10)->by('email-otp-verify-ip:'.$request->ip()),
+                Limit::perMinute(10)->by('email-otp-verify-user:'.($user?->getAuthIdentifier() ?? $request->ip())),
+            ];
+        });
+
         RateLimiter::for('device-secret-restore', function (Request $request): array {
             $identifier = (string) $request->input('device_identifier');
 

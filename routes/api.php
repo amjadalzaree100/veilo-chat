@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Auth\RegistrationController;
 use App\Http\Controllers\Api\V1\Auth\RecoveryController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
+use App\Http\Controllers\Api\V1\Account\EmailController;
 use App\Http\Controllers\Api\V1\IdentityController;
 use App\Http\Controllers\Api\V1\Messaging\BlockController;
 use App\Http\Controllers\Api\V1\Messaging\ConversationController;
@@ -20,13 +21,13 @@ Route::prefix('v1')->group(function (): void {
         ->middleware('throttle:recovery');
 
     Route::middleware('jwt')->group(function (): void {
-        Route::post('/auth/logout', [SessionController::class, 'logout'])
-            ->middleware('throttle:authentication');
-        Route::post('/auth/logout-all', [SessionController::class, 'logoutAll'])
-            ->middleware('throttle:authentication');
+        Route::post('/auth/logout', [SessionController::class, 'logout'])->middleware('throttle:authentication');
+        Route::post('/auth/logout-all', [SessionController::class, 'logoutAll'])->middleware('throttle:authentication');
         Route::get('/auth/recovery-secret', [RecoveryController::class, 'show']);
         Route::post('/auth/recovery-secret/visibility', [RecoveryController::class, 'setVisibility']);
         Route::post('/auth/recovery-secret/regenerate', [RecoveryController::class, 'regenerate']);
+        Route::post('/account/email/otp', [EmailController::class, 'requestOtp'])->middleware('throttle:email-otp-issue');
+        Route::post('/account/email/verify', [EmailController::class, 'verify'])->middleware('throttle:email-otp-verify');
         Route::patch('/account/privacy', [IdentityController::class, 'setPrivacy']);
         Route::post('/conversations', [ConversationController::class, 'store'])->middleware('throttle:messaging');
         Route::get('/conversations', [ConversationController::class, 'index'])->middleware('throttle:messaging');
@@ -38,4 +39,3 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/blocks/{blockedPublicId}', [BlockController::class, 'destroy'])->where('blockedPublicId', '[0-9a-fA-F]{32}')->middleware('throttle:messaging');
     });
 });
-  

@@ -5,8 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     public function up(): void
     {
         Schema::create('refresh_tokens', function (Blueprint $table): void {
@@ -23,10 +22,16 @@ return new class extends Migration
 
             $table->foreign('user_id')->references('id')->on('users')->restrictOnDelete();
             $table->foreign('device_id')->references('id')->on('devices')->restrictOnDelete();
-            $table->foreign('replaced_by')->references('id')->on('refresh_tokens')->restrictOnDelete();
             $table->index('user_id');
             $table->index('device_id');
             $table->index('family_id');
+        });
+
+        Schema::table('refresh_tokens', function (Blueprint $table): void {
+            $table->foreign('replaced_by')
+                ->references('id')
+                ->on('refresh_tokens')
+                ->restrictOnDelete();
         });
 
         if (DB::getDriverName() === 'pgsql') {
